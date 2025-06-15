@@ -1,69 +1,31 @@
 package transaction
 
 import (
+	"fmt"
 	"time"
-
-	"example.com/atm/account"
 )
 
+type TransactionType uint
+
 const (
-	Deposit = iota
+	Deposit TransactionType = iota
 	Withdrawal
 )
 
-type Transaction interface {
-	Execute() error
+func (tt TransactionType) String() string {
+	switch tt {
+	case Deposit:
+		return "Deposit"
+	case Withdrawal:
+		return "Withdrawal"
+	default:
+		return fmt.Sprintf("Unknown TransactionType (%d)", tt)
+	}
 }
 
-type BaseTransaction struct {
-	Account         *account.Account
-	TransactionType int
-	Amount          float64
-	TimeStamp       time.Time
+type Transaction struct {
 	TransactionID   string
-}
-
-type WithdrawalTransaction struct {
-	BaseTransaction
-}
-
-func NewWithdrawalTransaction(account *account.Account, amount float64) Transaction {
-	return &WithdrawalTransaction{
-		BaseTransaction: BaseTransaction{
-			Account:         account,
-			TransactionType: Withdrawal,
-			Amount:          amount,
-			TimeStamp:       time.Now().UTC(),
-			TransactionID:   "",
-		},
-	}
-}
-
-func (w *WithdrawalTransaction) Execute() error {
-	if err := w.Account.Withdraw(w.Amount); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-type DepositTransaction struct {
-	BaseTransaction
-}
-
-func (d *DepositTransaction) Execute() error {
-	d.Account.Deposit(d.Amount)
-	return nil
-}
-
-func NewDepositTransaction(account *account.Account, amount float64) Transaction {
-	return &DepositTransaction{
-		BaseTransaction: BaseTransaction{
-			Account:         account,
-			TransactionType: Deposit,
-			Amount:          amount,
-			TimeStamp:       time.Now().UTC(),
-			TransactionID:   "",
-		},
-	}
+	TransactionType TransactionType
+	Amount          float64
+	Timestamp       time.Time
 }

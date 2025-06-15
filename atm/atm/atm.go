@@ -1,37 +1,83 @@
 package atm
 
 import (
-	"errors"
-	"fmt"
+	"time"
 
 	"example.com/atm/bank"
 	"example.com/atm/cash_dispenser"
+	custom_error "example.com/atm/error"
 	"example.com/atm/transaction"
+	"github.com/google/uuid"
 )
 
 type Atm struct {
-	BankingService *bank.Bank
-	CashDispenser  *cash_dispenser.CashDispenser
+	bankingService *bank.Bank
+	cashDispenser  *cash_dispenser.CashDispenser
 }
 
-func (atm *Atm) GetBalance(accountNumber string) (float64, error) {
-	if acc, ok := atm.BankingService.AccountMap[accountNumber]; ok {
-		return acc.GetBalance(), nil
+func NewAtm(bankService *bank.Bank, cashDispenser *cash_dispenser.CashDispenser) *Atm {
+	return &Atm{
+		bankingService: bankService,
+		cashDispenser:  cashDispenser,
 	}
-
-	return 0.0, errors.New("no account exists with this number")
 }
 
-func (atm *Atm) Withdraw(accountNumber string, amount float64) (transaction.Transaction, error) {
-	if acc, ok := atm.BankingService.AccountMap[accountNumber]; ok {
-		if err := atm.CashDispenser.Withdraw(amount); err != nil {
-			fmt.Println(err)
-			return &transaction.WithdrawalTransaction{}, err
-		}
-		if err := transaction.NewWithdrawalTransaction(acc, amount).Execute(); err != nil {
-			return 
-		}
+type AtmCardAuthenticationRequest struct {
+	CardNumber string
+	Pin        string
+}
+
+func (atm *Atm) GetBalance(req *AtmCardAuthenticationRequest) (float64, error) {
+	acc, err := atm.bankingService.AuthenticateCard(req.CardNumber, req.Pin)
+	if err != nil {
+		return 0.0, err
+	}
+	return acc.GetBalance(), nil
+}
+
+func (atm *Atm) Withdraw(req *AtmCardAuthenticationRequest, amount float64) error {
+	acc, err := atm.bankingService.AuthenticateCard(req.CardNumber, req.Pin)
+	if err != nil {
+		return err
 	}
 
-	return &transaction.WithdrawalTransaction{}, errors.New("no account exists with this number")
+	if !atm.cashDispenser.HasSufficientCash(amount) {
+		return custom_error.NewInsufficientCashError()
+	}
+
+	txn := transaction.Transaction{
+		TransactionID:   uuid.NewString(),
+		Timestamp:       time.Now(),
+		TransactionType: transaction.Withdrawal,
+		Amount:          amount,
+	}
+
+	if err := acc.Withdraw(amount); err != nil {
+		return err
+	}
+
+	if err := atm.cashDispenser.Withdraw(amount); err != nil {
+		return err
+	}
+	acc.AddTransaction(&txn)
+	return nil
+}
+
+func (atm *Atm) Deposit(req *AtmCardAuthenticationRequest, amount float64) error {
+	acc, err := atm.bankingService.AuthenticateCard(req.CardNumber, req.Pin)
+	if err != nil {
+		return err
+	}
+
+	txn := transaction.Transaction{
+		TransactionID:   uuid.NewString(),
+		Timestamp:       time.Now(),
+		TransactionType: transaction.Deposit,
+		Amount:          amount,
+	}
+
+	acc.Deposit(amount)
+	atm.cashDispenser.Deposit(amount)
+	acc.AddTransaction(&txn)
+	return nil
 }
