@@ -43,3 +43,27 @@ func NewInsufficientCashError() InsufficientCashError {
 		},
 	}
 }
+
+type IncorrectCardOrPinError struct {
+	BaseError
+}
+
+func NewIncorrectCardOrPinError() IncorrectCardOrPinError {
+	return IncorrectCardOrPinError{
+		BaseError: BaseError{
+			Message: "incorrect card number or PIN",
+		},
+	}
+}
+
+type CardAlreadyExistsError struct {
+	BaseError
+}
+
+func NewCardAlreadyExistsError() CardAlreadyExistsError {
+	return CardAlreadyExistsError{
+		BaseError: BaseError{
+			Message: "card with this number and pin already exists",
+		},
+	}
+}

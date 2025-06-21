@@ -1,10 +1,10 @@
 package bank
 
 import (
-	"errors"
 	"fmt"
 
 	"example.com/atm/account"
+	custom_error "example.com/atm/error"
 )
 
 type Bank struct {
@@ -41,7 +41,7 @@ func (b *Bank) AuthenticateCard(cardNumber string, pin string) (*account.Account
 	key := fmt.Sprintf("%s:%s", cardNumber, pin)
 	acc, ok := b.atmCardToAccountsMap[key]
 	if !ok {
-		return nil, errors.New("incorrect card number or PIN")
+		return nil, custom_error.NewIncorrectCardOrPinError()
 	}
 	return acc, nil
 }
@@ -54,7 +54,7 @@ func (b *Bank) IssueNewAtmCard(req *LinkAtmCardToBankAccount) error {
 	key := fmt.Sprintf("%s:%s", req.CardNumber, req.Pin)
 
 	if _, exists := b.atmCardToAccountsMap[key]; exists {
-		return errors.New("card with this number and pin already exists")
+		return custom_error.NewCardAlreadyExistsError()
 	}
 
 	b.atmCardToAccountsMap[key] = req.Account
