@@ -1,5 +1,7 @@
 package lru
 
+import "sync"
+
 type ListNode struct {
 	Key   int
 	Value int
@@ -12,6 +14,7 @@ type LRUCache struct {
 	tail *ListNode
 	size int
 	mp   map[int]*ListNode
+	mu   sync.Mutex
 }
 
 func NewLruCache(size int) *LRUCache {
@@ -46,6 +49,9 @@ func (lru *LRUCache) removeNode(ln *ListNode) {
 }
 
 func (lru *LRUCache) Put(key int, val int) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
 	node, ok := lru.mp[key]
 
 	if ok {
@@ -68,6 +74,9 @@ func (lru *LRUCache) Put(key int, val int) {
 }
 
 func (lru *LRUCache) Get(key int) int {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
 	node, ok := lru.mp[key]
 
 	if ok {
@@ -86,6 +95,9 @@ func (lru *LRUCache) Get(key int) int {
 }
 
 func (lru *LRUCache) Delete(key int) {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
 	node, ok := lru.mp[key]
 
 	if ok {
