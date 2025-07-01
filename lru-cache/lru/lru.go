@@ -1,98 +1,95 @@
 package lru
 
-type Cache interface {
-	Get(int) int
-	Put(int, int)
-	Delete(int)
-}
-
-type Node struct {
-	key  int
-	val  int
-	next *Node
-	prev *Node
+type ListNode struct {
+	Key   int
+	Value int
+	Next  *ListNode
+	Prev  *ListNode
 }
 
 type LRUCache struct {
-	mp       map[int]*Node
-	head     *Node
-	tail     *Node
-	capacity int
+	head *ListNode
+	tail *ListNode
+	size int
+	mp   map[int]*ListNode
 }
 
-func (c *LRUCache) Get(key int) int {
-	if node, found := c.mp[key]; found {
-		val := node.val
-		c.removeNode(node)
-		n := &Node{
-			key: key,
-			val: val,
-		}
-		c.insertAtBeginning(n)
-		c.mp[key] = n
-		return val
-	}
+func NewLruCache(size int) *LRUCache {
+	head := &ListNode{}
+	tail := &ListNode{}
 
-	return -1
-}
-
-func (c *LRUCache) Put(key int, val int) {
-	if len(c.mp) >= c.capacity {
-		node := c.tail.prev
-		c.removeLastNode()
-		delete(c.mp, node.key)
-	}
-
-	if node, found := c.mp[key]; found {
-		c.removeNode(node)
-	}
-
-	n := &Node{
-		key: key,
-		val: val,
-	}
-
-	c.insertAtBeginning(n)
-	c.mp[key] = n
-}
-
-func (c *LRUCache) Delete(key int) {
-	if node, found := c.mp[key]; found {
-		c.removeNode(node)
-		delete(c.mp, key)
-	}
-}
-
-func (c *LRUCache) insertAtBeginning(n *Node) {
-	tmp := c.head.next
-	c.head.next = n
-	n.next = tmp
-	n.prev = c.head
-	tmp.prev = n
-}
-
-func (c *LRUCache) removeNode(n *Node) {
-	prev := n.prev
-	next := n.next
-	prev.next = n.next
-	next.prev = prev
-}
-
-func (c *LRUCache) removeLastNode() {
-	c.removeNode(c.tail.prev)
-}
-
-func NewLruCache(c int) Cache {
-	head := &Node{}
-	tail := &Node{}
-
-	head.next = tail
-	tail.prev = head
+	head.Next = tail
+	tail.Prev = head
 
 	return &LRUCache{
-		mp:       make(map[int]*Node),
-		head:     head,
-		tail:     tail,
-		capacity: c,
+		head: head,
+		tail: tail,
+		size: size,
+		mp:   make(map[int]*ListNode),
+	}
+}
+
+func (lru *LRUCache) insertNodeAtBeginning(ln *ListNode) {
+	tmp := lru.head.Next
+	lru.head.Next = ln
+	ln.Next = tmp
+	ln.Prev = lru.head
+	tmp.Prev = ln
+}
+
+func (lru *LRUCache) removeNode(ln *ListNode) {
+	next := ln.Next
+	prev := ln.Prev
+
+	prev.Next = next
+	next.Prev = prev
+}
+
+func (lru *LRUCache) Put(key int, val int) {
+	node, ok := lru.mp[key]
+
+	if ok {
+		lru.removeNode(node)
+	}
+
+	if len(lru.mp) >= lru.size {
+		key := lru.tail.Prev.Key
+		lru.removeNode(lru.tail.Prev)
+		delete(lru.mp, key)
+	}
+
+	newNode := &ListNode{
+		Value: val,
+		Key:   key,
+	}
+
+	lru.insertNodeAtBeginning(newNode)
+	lru.mp[key] = newNode
+}
+
+func (lru *LRUCache) Get(key int) int {
+	node, ok := lru.mp[key]
+
+	if ok {
+		val := node.Value
+		lru.removeNode(node)
+		newNode := &ListNode{
+			Key:   key,
+			Value: val,
+		}
+		lru.insertNodeAtBeginning(newNode)
+		lru.mp[key] = newNode
+		return val
+	} else {
+		return -1
+	}
+}
+
+func (lru *LRUCache) Delete(key int) {
+	node, ok := lru.mp[key]
+
+	if ok {
+		lru.removeNode(node)
+		delete(lru.mp, key)
 	}
 }
